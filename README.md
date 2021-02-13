@@ -1,1 +1,1 @@
-# Using Refresh Tokens with Next-auth
+# Using Refresh Tokens with Next-Auth.js
