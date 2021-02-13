@@ -1,39 +1,53 @@
 import NextAuth from "next-auth";
 import Providers from "next-auth/providers";
-import querystring from "querystring";
+
+const GOOGLE_AUTHORIZATION_URL =
+  "https://accounts.google.com/o/oauth2/v2/auth?" +
+  new URLSearchParams({
+    prompt: "consent",
+    access_type: "offline",
+    response_type: "code",
+  });
 
 const options = {
   providers: [
     Providers.Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      authorizationUrl:
-        "https://accounts.google.com/o/oauth2/v2/auth?prompt=consent&access_type=offline&response_type=code",
+      authorizationUrl: GOOGLE_AUTHORIZATION_URL,
     }),
   ],
   callbacks: {
-    async jwt(prevToken, account, profile) {
-      console.log(prevToken);
-      // Signing in
-      if (account && profile) {
+    async jwt(token, user, account) {
+      // Initial sign in
+      if (account && user) {
         return {
           accessToken: account.accessToken,
-          accessTokenExpires: account.accessTokenExpires,
-          refreshToken: account.refreshToken,
-          user: profile,
+          accessTokenExpires: Date.now() + account.expires_in * 1000,
+          refreshToken2: account.refresh_token,
+          refreshToken: account.refresh_token,
+          user,
         };
       }
 
-      // Subsequent use of JWT, the user has been logged in before
-      // access token has not expired yet
-      if (Date.now() < prevToken.accessTokenExpires) {
-        return prevToken;
+      // Return previous token if the access token has not expired yet
+      if (Date.now() < token.accessTokenExpires) {
+        return token;
       }
-      // access token has expired, try to update it
-      return refreshAccessToken(prevToken);
+
+      // Access token has expired, try to update it
+      return refreshAccessToken(token);
     },
-    async session(_, token) {
-      return token;
+    async session(session, token) {
+      if (token) {
+        session.user = token.user;
+        session.accessToken = token.accessToken;
+        session.error = token.error;
+      }
+
+      console.log(token);
+
+      return session;
     },
   },
 };
@@ -47,11 +61,11 @@ async function refreshAccessToken(token) {
   try {
     const url =
       "https://oauth2.googleapis.com/token?" +
-      querystring.stringify({
+      new URLSearchParams({
         client_id: process.env.GOOGLE_CLIENT_ID,
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
         grant_type: "refresh_token",
-        refresh_token: token.user.refreshToken,
+        refresh_token: token.refreshToken2,
       });
 
     const response = await fetch(url, {
@@ -61,23 +75,17 @@ async function refreshAccessToken(token) {
       method: "POST",
     });
 
-    const refreshToken = await response.json();
+    const refreshedTokens = await response.json();
 
     if (!response.ok) {
-      throw refreshToken;
+      throw refreshedTokens;
     }
-
-    // Give a 10 sec buffer
-    const now = new Date();
-    const accessTokenExpires = now.setSeconds(
-      now.getSeconds() + refreshToken.expires_in - 10
-    );
 
     return {
       ...token,
-      accessToken: refreshToken.access_token,
-      accessTokenExpires,
-      refreshToken: refreshToken.refresh_token,
+      accessToken: refreshedTokens.access_token,
+      accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
+      refreshToken: refreshedTokens.refresh_token,
     };
   } catch (error) {
     console.log(error);
