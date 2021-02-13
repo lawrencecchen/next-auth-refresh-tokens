@@ -45,8 +45,6 @@ const options = {
         session.error = token.error;
       }
 
-      console.log(token);
-
       return session;
     },
   },
