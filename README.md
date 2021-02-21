@@ -2,7 +2,7 @@
 
 ## Live example
 
-[https://next-auth-refresh-tokens.vercel.app](next-auth-refresh-tokens.vercel.app)
+[https://next-auth-refresh-tokens.vercel.app](https://next-auth-refresh-tokens.vercel.app)
 
 ## Tutorial
 
