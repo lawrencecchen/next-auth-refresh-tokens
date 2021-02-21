@@ -1,5 +1,5 @@
-import Head from "next/head";
 import { signIn, signOut, useSession } from "next-auth/client";
+import Head from "next/head";
 import { useEffect } from "react";
 
 export default function Home() {
