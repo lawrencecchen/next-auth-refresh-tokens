@@ -1,13 +1,20 @@
 import Head from "next/head";
 import { signIn, signOut, useSession } from "next-auth/client";
+import { useEffect } from "react";
 
 export default function Home() {
-  const [session, loading] = useSession();
+  const [session] = useSession();
+
+  useEffect(() => {
+    if (session?.error === "RefreshAccessTokenError") {
+      signIn(); // Force sign in to hopefully resolve error
+    }
+  }, [session]);
 
   return (
     <div>
       <Head>
-        <title>Next-auth Refresh Tokens</title>
+        <title>Next-Auth Refresh Tokens</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
